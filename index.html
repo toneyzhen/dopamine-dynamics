@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dopamine over time — interactive</title>
+<style>
+  :root{
+    --bg:#FAFAF7; --surface:#FFFFFF; --panel:#F3F2ED;
+    --text:#1A1D21; --muted:#6B6F76; --faint:#9AA0A6;
+    --border:rgba(0,0,0,0.10); --border-strong:rgba(0,0,0,0.20);
+    --trigger:#D8562F; --healthy:#17A07A; --danger:#C0392B;
+    --display:system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --body:system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#131519; --surface:#1B1E24; --panel:#22262D;
+      --text:#E7E9EC; --muted:#9BA1A9; --faint:#6C727A;
+      --border:rgba(255,255,255,0.12); --border-strong:rgba(255,255,255,0.24);
+      --trigger:#F0774C; --healthy:#33C39A; --danger:#E86B5F;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--body); line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px; margin:0 auto; padding:40px 20px 56px;}
+  header{margin-bottom:28px;}
+  .eyebrow{
+    font-family:var(--display); font-size:12px; font-weight:500;
+    letter-spacing:0.14em; text-transform:uppercase; color:var(--trigger); margin:0 0 8px;
+  }
+  h1{font-family:var(--display); font-weight:600; font-size:30px; line-height:1.15; margin:0 0 10px;}
+  .sub{color:var(--muted); font-size:15px; max-width:60ch; margin:0;}
+  .app{display:flex; flex-wrap:wrap; gap:20px; align-items:flex-start; margin-top:26px;}
+  .controls{flex:1 1 300px; min-width:280px; display:flex; flex-direction:column; gap:14px;}
+  .group-label{
+    font-size:12px; font-weight:600; letter-spacing:0.02em; color:var(--muted);
+    margin:0 0 7px; display:flex; align-items:center; gap:7px;
+  }
+  .group-label .swatch{width:9px; height:9px; border-radius:2px; flex:none;}
+  .btns{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
+  button.line-btn{
+    display:flex; align-items:center; gap:7px; width:100%; text-align:left;
+    font-family:var(--body); font-size:12px; line-height:1.2; color:var(--text);
+    background:var(--surface); border:1px solid var(--border); border-radius:8px;
+    padding:6px 8px; cursor:pointer; transition:border-color .12s, background .12s;
+  }
+  button.line-btn .label{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  button.line-btn:hover{border-color:var(--border-strong);}
+  button.line-btn .chk{
+    width:15px; height:15px; flex:none; border-radius:4px;
+    border:1.5px solid var(--c); background:transparent; opacity:0.45;
+    display:flex; align-items:center; justify-content:center; transition:all .12s;
+  }
+  button.line-btn .chk svg{width:11px; height:11px; opacity:0; transition:opacity .12s;}
+  button.line-btn[aria-pressed="true"]{background:var(--panel);}
+  button.line-btn[aria-pressed="true"] .chk{background:var(--c); border-color:var(--c); opacity:1;}
+  button.line-btn[aria-pressed="true"] .chk svg{opacity:1;}
+  button.line-btn:focus-visible{outline:2px solid var(--trigger); outline-offset:2px;}
+  .chart-col{flex:2 1 360px; min-width:300px; display:flex; flex-direction:column; gap:12px;}
+  .chart-card{
+    width:100%; background:var(--surface);
+    border:1px solid var(--border); border-radius:14px; padding:14px 10px 10px; position:relative;
+  }
+  .reset{
+    align-self:flex-start; display:inline-flex; align-items:center; gap:7px;
+    font-family:var(--body); font-size:13px; color:var(--danger);
+    background:transparent; border:1px solid var(--border-strong); border-radius:8px;
+    padding:8px 14px; cursor:pointer; transition:background .12s;
+  }
+  .reset:hover{background:var(--panel);}
+  .reset:focus-visible{outline:2px solid var(--danger); outline-offset:2px;}
+  canvas{width:100%; height:340px; display:block;}
+  .tip{
+    position:absolute; pointer-events:none; background:var(--surface);
+    border:1px solid var(--border-strong); border-radius:8px; padding:8px 10px;
+    font-size:12px; line-height:1.5; box-shadow:0 4px 16px rgba(0,0,0,.14);
+    opacity:0; transition:opacity .1s; max-width:180px; z-index:5;
+  }
+  .tip .tip-t{color:var(--muted); font-size:11px; margin-bottom:3px;}
+  .tip .row{display:flex; align-items:center; gap:6px; white-space:nowrap;}
+  .tip .row .d{width:8px; height:8px; border-radius:50%; flex:none;}
+  .note{margin-top:24px; color:var(--faint); font-size:13px; max-width:70ch;}
+  .icon{width:15px; height:15px; flex:none; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; opacity:0.75;}
+  .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Dopamine dynamics</p>
+    <h1>Spikes, crashes, and slow recoveries</h1>
+    <p class="sub">Click a high-dopamine trigger or a healthy reset activity to plot its curve. Triggers spike hard and crash below baseline; healthy activities rise less but hold longer. Hover the chart to read values.</p>
+  </header>
+
+  <h2 class="sr-only">Interactive chart of dopamine level over time. High-dopamine triggers produce sharp spikes followed by a crash below baseline, while healthy activities produce lower but sustained elevations above baseline.</h2>
+
+  <div class="app">
+    <div class="chart-col">
+      <div class="chart-card">
+        <canvas id="chart"></canvas>
+        <div class="tip" id="tip"></div>
+      </div>
+      <button class="reset" id="reset-btn" type="button">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4"/></svg>
+        Reset chart
+      </button>
+    </div>
+
+    <div class="controls">
+      <div>
+        <p class="group-label"><span class="swatch" style="background:var(--trigger)"></span>High dopamine triggers</p>
+        <div class="btns" id="trigger-btns"></div>
+      </div>
+      <div>
+        <p class="group-label"><span class="swatch" style="background:var(--healthy)"></span>Healthy reset activities</p>
+        <div class="btns" id="healthy-btns"></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">These curves are illustrative — a mental model for how fast, high-peaking rewards tend to crash while slower, effortful activities sustain a gentler lift. They are not measured data, and real dopamine dynamics vary a lot by person, dose, and context.</p>
+</div>
+
+<script>
+(function(){
+  var BASE = 50, TMAX = 12, N = 240;
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var triggers = [
+    {id:'social',   label:'Social media',       color:'#D4537E', peak:95, tau:0.6, dip:28, tc:2.6, w:1.6},
+    {id:'sugar',    label:'Sugar / junk food',  color:'#D85A30', peak:80, tau:0.7, dip:22, tc:2.3, w:1.4},
+    {id:'games',    label:'Video games',        color:'#C0862B', peak:88, tau:1.1, dip:24, tc:3.4, w:1.9},
+    {id:'gamble',   label:'Gambling',           color:'#C0392B', peak:105,tau:0.5, dip:34, tc:2.2, w:1.5},
+    {id:'nicotine', label:'Nicotine',           color:'#A0562C', peak:70, tau:0.4, dip:18, tc:1.6, w:1.1},
+    {id:'shop',     label:'Impulse shopping',   color:'#B0416E', peak:85, tau:0.8, dip:26, tc:2.8, w:1.7},
+    {id:'caffeine', label:'Caffeine',           color:'#E0A020', peak:55, tau:1.2, dip:14, tc:4.5, w:2.2},
+    {id:'alcohol',  label:'Alcohol',            color:'#E24B4A', peak:75, tau:1.3, dip:30, tc:4.5, w:2.5},
+    {id:'stream',   label:'Binge streaming',    color:'#9B59B6', peak:78, tau:1.5, dip:20, tc:4.0, w:2.2},
+    {id:'porn',     label:'Pornography',        color:'#7D3C67', peak:100,tau:0.5, dip:32, tc:2.0, w:1.4},
+    {id:'doom',     label:'Doomscrolling news', color:'#E8743B', peak:82, tau:0.9, dip:24, tc:3.0, w:1.8},
+    {id:'drugs',    label:'Recreational drugs', color:'#8E44AD', peak:120,tau:0.6, dip:40, tc:3.0, w:2.0}
+  ];
+  var healthy = [
+    {id:'exercise', label:'Exercise',           color:'#1D9E75', amp:40, t1:1.4, t2:6.5, k:0.8},
+    {id:'medit',    label:'Meditation',         color:'#3E97E0', amp:28, t1:1.8, t2:8.5, k:1.1},
+    {id:'nature',   label:'Nature walk',        color:'#6FA82A', amp:34, t1:1.6, t2:7.5, k:1.0},
+    {id:'reading',  label:'Reading',            color:'#5E56C4', amp:26, t1:2.0, t2:8.0, k:1.0},
+    {id:'sleep',    label:'Good sleep',         color:'#2E7BC0', amp:36, t1:2.5, t2:10.5,k:1.3},
+    {id:'cold',     label:'Cold shower',        color:'#0F9E7A', amp:44, t1:0.9, t2:5.0, k:0.7},
+    {id:'flow',     label:'Deep work / flow',   color:'#2C8A8B', amp:38, t1:1.8, t2:7.0, k:0.9},
+    {id:'sun',      label:'Sunlight',           color:'#3AAFCF', amp:30, t1:0.8, t2:6.0, k:1.0},
+    {id:'connect',  label:'Social connection',  color:'#2E86C1', amp:42, t1:1.2, t2:6.5, k:0.9},
+    {id:'creative', label:'Creative hobby',     color:'#7A6CF0', amp:36, t1:1.5, t2:7.5, k:1.0},
+    {id:'meal',     label:'Healthy meal',       color:'#5AAD3A', amp:32, t1:0.9, t2:5.0, k:0.8},
+    {id:'grat',     label:'Gratitude journaling',color:'#1FB3A6', amp:24, t1:2.0, t2:8.5, k:1.1}
+  ];
+
+  var checkMark = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+  var svgTrigger = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/></svg>';
+  var svgLeaf = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 20A7 7 0 0 1 4 13c0-6 8-9 16-9 0 8-3 16-9 16Z"/><path d="M4 20c3-4 6-6 10-8"/></svg>';
+
+  var all = {};
+  triggers.concat(healthy).forEach(function(a){ all[a.id]=a; });
+  var active = {};
+
+  function triggerVal(a,t){
+    var spike = a.peak*(t/a.tau)*Math.exp(1 - t/a.tau);
+    var dip = -a.dip*Math.exp(-Math.pow(t-a.tc,2)/(2*a.w*a.w));
+    return BASE + spike + dip;
+  }
+  function healthyVal(a,t){
+    var rise = 1/(1+Math.exp(-(t-a.t1)/a.k));
+    var fall = 1/(1+Math.exp((t-a.t2)/a.k));
+    return BASE + a.amp*rise*fall;
+  }
+  function valAt(a,t){ return a.tau!==undefined ? triggerVal(a,t) : healthyVal(a,t); }
+
+  var canvas = document.getElementById('chart');
+  var ctx = canvas.getContext('2d');
+  var tip = document.getElementById('tip');
+  var W,H,dpr, PADL=46, PADR=14, PADT=18, PADB=36;
+  var YMIN=0, YMAX=150;
+  var hoverX = null;
+
+  function cssVar(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+  function resize(){
+    dpr = window.devicePixelRatio||1;
+    W = canvas.clientWidth; H = canvas.clientHeight;
+    canvas.width = Math.round(W*dpr); canvas.height = Math.round(H*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  function x(t){ return PADL + (t/TMAX)*(W-PADL-PADR); }
+  function y(v){ return PADT + (1-(v-YMIN)/(YMAX-YMIN))*(H-PADT-PADB); }
+  function tFromPx(px){ return Math.max(0, Math.min(TMAX, ((px-PADL)/(W-PADL-PADR))*TMAX)); }
+
+  var anim=0;
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    var grid=cssVar('--border'), txt=cssVar('--muted'), txt2=cssVar('--text'), faint=cssVar('--faint');
+
+    ctx.strokeStyle=grid; ctx.lineWidth=1;
+    ctx.fillStyle=faint; ctx.font='11px '+cssVar('--body');
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    for(var v=0; v<=150; v+=50){
+      ctx.beginPath(); ctx.moveTo(PADL,y(v)); ctx.lineTo(W-PADR,y(v)); ctx.stroke();
+      ctx.fillText(v, PADL-8, y(v));
+    }
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    for(var h=0; h<=12; h+=2){ ctx.fillText(h+'h', x(h), H-PADB+9); }
+
+    ctx.strokeStyle=txt; ctx.lineWidth=1.5; ctx.setLineDash([6,5]);
+    ctx.beginPath(); ctx.moveTo(PADL,y(BASE)); ctx.lineTo(W-PADR,y(BASE)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=txt; ctx.font='500 11px '+cssVar('--body');
+    ctx.textAlign='left'; ctx.textBaseline='bottom';
+    ctx.fillText('Baseline', PADL+4, y(BASE)-4);
+
+    ctx.fillStyle=faint; ctx.save();
+    ctx.translate(13,(H-PADB+PADT)/2); ctx.rotate(-Math.PI/2);
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('Dopamine level', 0,0); ctx.restore();
+
+    var ids = Object.keys(active).filter(function(id){return active[id];});
+    ids.forEach(function(id){
+      var a=all[id];
+      ctx.strokeStyle=a.color; ctx.lineWidth=2.5; ctx.lineJoin='round';
+      ctx.beginPath();
+      var lim=Math.floor(N*anim);
+      for(var i=0;i<=lim;i++){
+        var t=(i/N)*TMAX, vv=Math.max(YMIN,Math.min(YMAX,valAt(a,t)));
+        if(i===0) ctx.moveTo(x(t),y(vv)); else ctx.lineTo(x(t),y(vv));
+      }
+      ctx.stroke();
+    });
+
+    if(hoverX!==null && anim>=1 && ids.length){
+      var t=tFromPx(hoverX), px=x(t);
+      ctx.strokeStyle=txt; ctx.globalAlpha=0.4; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(px,PADT); ctx.lineTo(px,H-PADB); ctx.stroke(); ctx.globalAlpha=1;
+      ids.forEach(function(id){
+        var a=all[id], vv=Math.max(YMIN,Math.min(YMAX,valAt(a,t)));
+        ctx.fillStyle=a.color;
+        ctx.beginPath(); ctx.arc(px,y(vv),3.5,0,Math.PI*2); ctx.fill();
+      });
+      showTip(t, ids);
+    } else { tip.style.opacity=0; }
+  }
+
+  function showTip(t, ids){
+    var rows = ids.map(function(id){
+      var a=all[id], vv=Math.round(valAt(a,t));
+      return '<div class="row"><span class="d" style="background:'+a.color+'"></span>'+a.label+': <strong>'+vv+'</strong></div>';
+    }).join('');
+    tip.innerHTML = '<div class="tip-t">'+t.toFixed(1)+' h</div>'+rows;
+    tip.style.opacity=1;
+    var px=x(t)+12, card=canvas.parentElement.getBoundingClientRect();
+    if(px + 180 > card.width) px = x(t) - 180 - 12;
+    tip.style.left = Math.max(4,px)+'px';
+    tip.style.top = (PADT+6)+'px';
+  }
+
+  function animate(){
+    if(reduceMotion){ anim=1; draw(); return; }
+    if(anim<1){ anim=Math.min(1,anim+0.06); draw(); requestAnimationFrame(animate); }
+    else draw();
+  }
+
+  function makeBtn(a, container, iconSvg){
+    var b=document.createElement('button');
+    b.type='button'; b.className='line-btn';
+    b.setAttribute('aria-pressed','false');
+    b.innerHTML = '<span class="chk" style="--c:'+a.color+'">'+checkMark+'</span><span class="label">'+a.label+'</span>';
+    b.addEventListener('click',function(){
+      active[a.id]=!active[a.id];
+      b.setAttribute('aria-pressed', active[a.id]?'true':'false');
+      anim=0; animate();
+    });
+    container.appendChild(b);
+  }
+  triggers.forEach(function(a){ makeBtn(a, document.getElementById('trigger-btns'), svgTrigger); });
+  healthy.forEach(function(a){ makeBtn(a, document.getElementById('healthy-btns'), svgLeaf); });
+
+  document.getElementById('reset-btn').addEventListener('click',function(){
+    active={}; hoverX=null;
+    document.querySelectorAll('.line-btn').forEach(function(b){ b.setAttribute('aria-pressed','false'); });
+    anim=1; draw();
+  });
+
+  canvas.addEventListener('mousemove',function(e){
+    var r=canvas.getBoundingClientRect(); hoverX=e.clientX-r.left; draw();
+  });
+  canvas.addEventListener('mouseleave',function(){ hoverX=null; draw(); });
+
+  function boot(){ resize(); anim=1; draw(); }
+  window.addEventListener('resize',function(){ resize(); draw(); });
+  boot();
+})();
+</script>
+</body>
+</html>
