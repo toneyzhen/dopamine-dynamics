@@ -1,12 +1,14 @@
 # dopamine-dynamics
 
+**▶ [View the live chart](https://htmlpreview.github.io/?https://github.com/toneyzhen/dopamine-dynamics/blob/main/index.html)** — runs right in your browser, no download needed.
+
 An interactive chart that illustrates how different activities affect dopamine levels over time. Click any **high-dopamine trigger** or **healthy reset activity** to plot its curve. Triggers spike hard and crash below baseline; healthy activities rise more gently but stay elevated longer. Hover the chart to read values at any point in time.
 
 > **Heads up:** The numbers in this chart are **illustrative, not measured data.** See [About the data](#about-the-data) below.
 
 ## Demo
 
-Live version: _add your GitHub Pages / hosting link here_
+Live version: **[htmlpreview.github.io](https://htmlpreview.github.io/?https://github.com/toneyzhen/dopamine-dynamics/blob/main/index.html)**
 
 ## Features
 
@@ -18,14 +20,6 @@ Live version: _add your GitHub Pages / hosting link here_
 - Responsive layout down to mobile
 - Respects `prefers-reduced-motion`
 - **Zero dependencies** — a single self-contained HTML file, no build step, no network access required
-
-## Running it
-
-Because everything (styles, chart logic, fonts) is inlined into one file, there's nothing to install.
-
-**Locally:** download `index.html` and double-click it. It opens and runs in your browser, online or offline.
-
-**Hosting it:** upload `index.html` to any static host — GitHub Pages, Netlify, Cloudflare Pages, etc. No configuration needed. For GitHub Pages: put `index.html` at the repo root, then go to **Settings → Pages → Build and deployment**, set the source to **Deploy from a branch**, pick your branch and the `/ (root)` folder, and save.
 
 ## Customizing
 
@@ -65,7 +59,3 @@ These curves are a **teaching metaphor, not a measurement.** Every value — the
 The qualitative idea is loosely grounded in popular neuroscience writing (e.g. Anna Lembke's *Dopamine Nation*) and concepts like reward prediction error and receptor downregulation after overstimulation: fast, potent rewards tend to produce large, brief surges followed by a dip below baseline, while slower, effortful activities produce smaller but more sustained changes.
 
 Real dopamine dynamics are far messier than clean lines — they operate on sub-second timescales in specific brain regions, "level" isn't a single quantity you'd plot in hours, and actual magnitudes vary enormously by activity, dose, person, and context. **Don't treat these curves as empirical findings.**
-
-## License
-
-_Add a license of your choice (e.g. MIT) here._
